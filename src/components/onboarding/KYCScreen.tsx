@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
 import StatusBadge from "./StatusBadge";
+import { engineerApi } from "@/lib/engineer";
 
 const steps = [
   { id: 1, title: "Profile" },
@@ -17,6 +18,7 @@ const steps = [
 interface UploadedFile {
   name: string;
   preview: string;
+  file: File;
   status: "pending" | "approved" | "rejected";
 }
 
@@ -28,11 +30,12 @@ interface KYCData {
 }
 
 interface KYCScreenProps {
-  onComplete: (data: KYCData) => void;
+  onComplete: () => void;
   onBack: () => void;
 }
 
 const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<KYCData>({
     aadhaarNumber: "",
     panNumber: "",
@@ -56,6 +59,7 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
           [field]: {
             name: file.name,
             preview: reader.result as string,
+            file: file,
             status: "pending" as const,
           },
         }));
@@ -72,7 +76,7 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
     setFormData((prev) => ({ ...prev, [field]: null }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.aadhaarNumber || !formData.panNumber) {
       toast({
         title: "Incomplete Form",
@@ -89,11 +93,30 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
       });
       return;
     }
-    toast({
-      title: "KYC Submitted",
-      description: "Your documents are under review",
-    });
-    onComplete(formData);
+
+    setIsLoading(true);
+    try {
+      await engineerApi.uploadKyc(
+        formData.aadhaarNumber,
+        formData.panNumber,
+        "address_proof",
+        formData.addressProof.file,
+        formData.profilePhoto.file
+      );
+      toast({
+        title: "KYC Submitted",
+        description: "Your documents are under review",
+      });
+      onComplete();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit KYC",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const UploadZone = ({
@@ -239,8 +262,19 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
               <Button variant="outline" onClick={onBack} className="flex-1 h-12">
                 Back
               </Button>
-              <Button onClick={handleSubmit} className="flex-1 h-12 text-base font-medium">
-                Submit KYC
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isLoading}
+                className="flex-1 h-12 text-base font-medium"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Submitting...
+                  </span>
+                ) : (
+                  "Submit KYC"
+                )}
               </Button>
             </div>
           </div>

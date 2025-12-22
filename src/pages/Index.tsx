@@ -101,9 +101,7 @@ const Index = () => {
           />
         )}
 
-        {currentStep === "status" && (
-          <StatusScreen statuses={verificationStatuses} />
-        )}
+        {currentStep === "status" && <StatusScreen />}
       </main>
     </div>
   );

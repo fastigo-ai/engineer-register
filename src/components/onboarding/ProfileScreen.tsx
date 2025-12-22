@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
+import { engineerApi } from "@/lib/engineer";
 
 const steps = [
   { id: 1, title: "Profile" },
@@ -44,6 +45,7 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
     fullName: "",
     mobile: initialData.mobile,
@@ -64,7 +66,7 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.fullName || !formData.address || !formData.city || !formData.pinCode) {
       toast({
         title: "Incomplete Form",
@@ -81,11 +83,33 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
       });
       return;
     }
-    toast({
-      title: "Profile Saved",
-      description: "Your profile details have been saved successfully",
-    });
-    onComplete(formData);
+
+    setIsLoading(true);
+    try {
+      await engineerApi.saveProfile({
+        full_name: formData.fullName,
+        mobile: formData.mobile,
+        email: formData.email,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        pin_code: formData.pinCode,
+        skills: formData.skills,
+      });
+      toast({
+        title: "Profile Saved",
+        description: "Your profile details have been saved successfully",
+      });
+      onComplete(formData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -224,8 +248,19 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            <Button onClick={handleSubmit} className="w-full h-12 text-base font-medium mt-6">
-              Save & Continue
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isLoading}
+              className="w-full h-12 text-base font-medium mt-6"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                "Save & Continue"
+              )}
             </Button>
           </div>
         </div>
