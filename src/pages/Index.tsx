@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppHeader from "@/components/onboarding/AppHeader";
 import AuthScreen from "@/components/onboarding/AuthScreen";
 import ProfileScreen from "@/components/onboarding/ProfileScreen";
 import KYCScreen from "@/components/onboarding/KYCScreen";
 import BankScreen from "@/components/onboarding/BankScreen";
 import StatusScreen from "@/components/onboarding/StatusScreen";
+import { authApi } from "@/lib/auth";
 
 type OnboardingStep = "auth" | "profile" | "kyc" | "bank" | "status";
 
@@ -30,7 +31,15 @@ const Index = () => {
     bank: "pending",
   });
 
+  // Check for existing auth on mount
+  useEffect(() => {
+    if (authApi.isAuthenticated()) {
+      setCurrentStep("profile");
+    }
+  }, []);
+
   const handleSignOut = () => {
+    authApi.removeToken();
     setCurrentStep("auth");
     setAuthData({ mobile: "", email: "" });
     setVerificationStatuses({

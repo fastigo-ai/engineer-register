@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
+import { authApi } from "@/lib/auth";
 
 interface AuthScreenProps {
   onAuthenticated: (data: { mobile: string; email: string }) => void;
@@ -16,10 +17,11 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
 
   const isEmail = inputValue.includes("@");
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!inputValue) {
       toast({
         title: "Error",
@@ -28,18 +30,29 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
       });
       return;
     }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const mode = isEmail ? "email" : "mobile";
+      const response = await authApi.register(mode, inputValue);
+      setSessionId(response.session_id);
       setShowOtp(true);
       toast({
         title: "OTP Sent",
         description: `Verification code sent to ${inputValue}`,
       });
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     if (otp.length !== 6) {
       toast({
         title: "Error",
@@ -48,9 +61,11 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
       });
       return;
     }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await authApi.verifyOtp(sessionId, otp);
+      authApi.setToken(response.access_token);
       toast({
         title: "Success",
         description: "Verification successful!",
@@ -59,7 +74,15 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
         mobile: isEmail ? "" : inputValue,
         email: isEmail ? inputValue : "",
       });
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "OTP verification failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
