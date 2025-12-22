@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
-import { authApi } from "@/lib/auth";
+import { authApi } from "@/lib/api";
 
 interface AuthScreenProps {
   onAuthenticated: (data: { mobile: string; email: string }) => void;

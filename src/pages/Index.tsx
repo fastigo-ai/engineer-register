@@ -5,7 +5,7 @@ import ProfileScreen from "@/components/onboarding/ProfileScreen";
 import KYCScreen from "@/components/onboarding/KYCScreen";
 import BankScreen from "@/components/onboarding/BankScreen";
 import StatusScreen from "@/components/onboarding/StatusScreen";
-import { authApi } from "@/lib/auth";
+import { authApi } from "@/lib/api";
 
 type OnboardingStep = "auth" | "profile" | "kyc" | "bank" | "status";
 

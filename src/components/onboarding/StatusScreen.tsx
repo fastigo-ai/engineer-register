@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { User, FileText, Building2, CheckCircle, Clock, XCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "./ProgressIndicator";
-import { engineerApi, StatusResponse } from "@/lib/engineer";
+import { engineerApi, StatusResponse } from "@/lib/api";
 
 const steps = [
   { id: 1, title: "Profile" },

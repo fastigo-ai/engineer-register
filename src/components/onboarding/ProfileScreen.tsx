@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
-import { engineerApi } from "@/lib/engineer";
+import { engineerApi } from "@/lib/api";
 
 const steps = [
   { id: 1, title: "Profile" },

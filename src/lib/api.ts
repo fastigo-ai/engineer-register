@@ -1,13 +1,25 @@
-import { authApi } from "./auth";
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const getAuthHeaders = () => {
-  const token = authApi.getToken();
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
+// ==================== Token Management ====================
+const getToken = (): string | null => localStorage.getItem("access_token");
+const setToken = (token: string): void => localStorage.setItem("access_token", token);
+const removeToken = (): void => localStorage.removeItem("access_token");
+const isAuthenticated = (): boolean => !!getToken();
+
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${getToken()}`,
+});
+
+// ==================== Types ====================
+export interface RegisterResponse {
+  session_id: string;
+  is_new_user: boolean;
+  message: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+}
 
 export interface ProfilePayload {
   full_name: string;
@@ -28,15 +40,70 @@ export interface StatusResponse {
   overall_status: "verified" | "rejected" | "pending_review";
 }
 
+// ==================== Auth API ====================
+export const authApi = {
+  async register(mode: "mobile" | "email", value: string): Promise<RegisterResponse> {
+    const body = mode === "mobile"
+      ? { mode: "mobile", mobile: value }
+      : { mode: "email", email: value };
+
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Registration failed");
+    }
+
+    return response.json();
+  },
+
+  async verifyOtp(sessionId: string, otp: string): Promise<TokenResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, otp }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "OTP verification failed");
+    }
+
+    return response.json();
+  },
+
+  getToken,
+  setToken,
+  removeToken,
+  isAuthenticated,
+};
+
+// ==================== Engineer API ====================
 export const engineerApi = {
   async saveProfile(data: ProfilePayload): Promise<{ message: string }> {
+    const payload = {
+      full_name: data.full_name,
+      mobile: data.mobile || "",
+      email: data.email || "",
+      address: data.address,
+      city: data.city,
+      state: data.state || "",
+      pin_code: data.pin_code,
+      skills: data.skills,
+      ...(data.dob && { dob: data.dob }),
+    };
+
     const response = await fetch(`${API_BASE_URL}/engineer/profile`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
