@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
 import StatusBadge from "./StatusBadge";
+import { engineerApi } from "@/lib/engineer";
 
 const steps = [
   { id: 1, title: "Profile" },
@@ -17,6 +18,7 @@ const steps = [
 interface UploadedFile {
   name: string;
   preview: string;
+  file: File;
   status: "pending" | "approved" | "rejected";
 }
 
@@ -30,11 +32,12 @@ interface BankData {
 }
 
 interface BankScreenProps {
-  onComplete: (data: BankData) => void;
+  onComplete: () => void;
   onBack: () => void;
 }
 
 const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<BankData>({
     accountHolderName: "",
     accountNumber: "",
@@ -56,6 +59,7 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
           chequeImage: {
             name: file.name,
             preview: reader.result as string,
+            file: file,
             status: "pending" as const,
           },
         }));
@@ -72,7 +76,7 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
     setFormData((prev) => ({ ...prev, chequeImage: null }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !formData.accountHolderName ||
       !formData.accountNumber ||
@@ -102,11 +106,29 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
       });
       return;
     }
-    toast({
-      title: "Bank Details Submitted",
-      description: "Your bank details are under review",
-    });
-    onComplete(formData);
+
+    setIsLoading(true);
+    try {
+      await engineerApi.saveBankDetails(
+        formData.bankName,
+        formData.accountNumber,
+        formData.ifscCode,
+        formData.chequeImage.file
+      );
+      toast({
+        title: "Bank Details Submitted",
+        description: "Your bank details are under review",
+      });
+      onComplete();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit bank details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -263,8 +285,19 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
               <Button variant="outline" onClick={onBack} className="flex-1 h-12">
                 Back
               </Button>
-              <Button onClick={handleSubmit} className="flex-1 h-12 text-base font-medium">
-                Submit Bank Details
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isLoading}
+                className="flex-1 h-12 text-base font-medium"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Submitting...
+                  </span>
+                ) : (
+                  "Submit Bank Details"
+                )}
               </Button>
             </div>
           </div>

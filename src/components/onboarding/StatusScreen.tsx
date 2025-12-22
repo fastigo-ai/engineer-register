@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { User, FileText, Building2, CheckCircle, Clock, XCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "./ProgressIndicator";
+import { engineerApi, StatusResponse } from "@/lib/engineer";
 
 const steps = [
   { id: 1, title: "Profile" },
@@ -9,7 +11,7 @@ const steps = [
   { id: 4, title: "Status" },
 ];
 
-type VerificationStatus = "pending" | "approved" | "rejected";
+type VerificationStatus = "pending" | "approved" | "rejected" | "completed";
 
 interface StatusCardProps {
   title: string;
@@ -19,6 +21,8 @@ interface StatusCardProps {
 }
 
 const StatusCard = ({ title, icon: Icon, status, details }: StatusCardProps) => {
+  const normalizedStatus = status === "completed" ? "approved" : status;
+  
   const statusConfig = {
     pending: {
       bg: "bg-warning/10",
@@ -43,7 +47,7 @@ const StatusCard = ({ title, icon: Icon, status, details }: StatusCardProps) => 
     },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[normalizedStatus];
   const StatusIcon = config.icon;
 
   return (
@@ -84,57 +88,82 @@ const Timeline = ({ items }: { items: TimelineItem[] }) => {
   return (
     <div className="relative pl-8 space-y-6">
       <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-border" />
-      {items.map((item, index) => (
-        <div key={item.step} className="relative animate-slide-in" style={{ animationDelay: `${index * 100}ms` }}>
-          <div
-            className={`absolute -left-5 w-4 h-4 rounded-full border-2 ${
-              item.status === "approved"
-                ? "bg-success border-success"
-                : item.status === "rejected"
-                ? "bg-destructive border-destructive"
-                : "bg-warning border-warning"
-            }`}
-          />
-          <div className="bg-card rounded-lg p-3 shadow-sm border border-border/50">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sm text-foreground">
-                {item.title}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {item.timestamp || "Pending"}
-              </span>
+      {items.map((item, index) => {
+        const normalizedStatus = item.status === "completed" ? "approved" : item.status;
+        return (
+          <div key={item.step} className="relative animate-slide-in" style={{ animationDelay: `${index * 100}ms` }}>
+            <div
+              className={`absolute -left-5 w-4 h-4 rounded-full border-2 ${
+                normalizedStatus === "approved"
+                  ? "bg-success border-success"
+                  : normalizedStatus === "rejected"
+                  ? "bg-destructive border-destructive"
+                  : "bg-warning border-warning"
+              }`}
+            />
+            <div className="bg-card rounded-lg p-3 shadow-sm border border-border/50">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm text-foreground">
+                  {item.title}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {item.timestamp || "Pending"}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
 
 interface StatusScreenProps {
-  statuses: {
-    profile: VerificationStatus;
-    kyc: VerificationStatus;
-    bank: VerificationStatus;
-  };
   rejectionReason?: string;
 }
 
-const StatusScreen = ({ statuses, rejectionReason }: StatusScreenProps) => {
-  const allApproved =
-    statuses.profile === "approved" &&
-    statuses.kyc === "approved" &&
-    statuses.bank === "approved";
+const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [statusData, setStatusData] = useState<StatusResponse | null>(null);
 
-  const anyRejected =
-    statuses.profile === "rejected" ||
-    statuses.kyc === "rejected" ||
-    statuses.bank === "rejected";
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const data = await engineerApi.getStatus();
+        setStatusData(data);
+      } catch (error) {
+        console.error("Failed to fetch status:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStatus();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <span className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground">Loading status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const profileStatus = statusData?.profile_status === "completed" ? "approved" : "pending";
+  const kycStatus = statusData?.kyc_status || "pending";
+  const bankStatus = statusData?.bank_status || "pending";
+  const overallStatus = statusData?.overall_status || "pending_review";
+
+  const allApproved = overallStatus === "verified";
+  const anyRejected = overallStatus === "rejected";
 
   const timelineItems: TimelineItem[] = [
-    { step: 1, title: "Profile Submitted", status: statuses.profile, timestamp: "Just now" },
-    { step: 2, title: "KYC Documents", status: statuses.kyc, timestamp: statuses.kyc !== "pending" ? "2 hours ago" : undefined },
-    { step: 3, title: "Bank Verification", status: statuses.bank, timestamp: statuses.bank !== "pending" ? "1 hour ago" : undefined },
+    { step: 1, title: "Profile Submitted", status: profileStatus, timestamp: profileStatus === "approved" ? "Completed" : undefined },
+    { step: 2, title: "KYC Documents", status: kycStatus, timestamp: kycStatus !== "pending" ? "Submitted" : undefined },
+    { step: 3, title: "Bank Verification", status: bankStatus, timestamp: bankStatus !== "pending" ? "Submitted" : undefined },
   ];
 
   return (
@@ -158,19 +187,19 @@ const StatusScreen = ({ statuses, rejectionReason }: StatusScreenProps) => {
             <StatusCard
               title="Profile Status"
               icon={User}
-              status={statuses.profile}
+              status={profileStatus}
               details="Personal information verified"
             />
             <StatusCard
               title="KYC Status"
               icon={FileText}
-              status={statuses.kyc}
+              status={kycStatus}
               details="Identity documents verified"
             />
             <StatusCard
               title="Bank Status"
               icon={Building2}
-              status={statuses.bank}
+              status={bankStatus}
               details="Bank account verified"
             />
           </div>
