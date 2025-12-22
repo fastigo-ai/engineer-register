@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
 import StatusBadge from "./StatusBadge";
-import { engineerApi } from "@/lib/engineer";
+import { engineerApi } from "@/lib/api";
 
 const steps = [
   { id: 1, title: "Profile" },
