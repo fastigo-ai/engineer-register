@@ -11,7 +11,7 @@ const steps = [
   { id: 4, title: "Status" },
 ];
 
-type VerificationStatus = "pending" | "approved" | "rejected" | "completed";
+type VerificationStatus = "pending" | "approved" | "rejected" | "completed" | "pending_review" | "verified";
 
 interface StatusCardProps {
   title: string;
@@ -161,9 +161,9 @@ const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
   const anyRejected = overallStatus === "rejected";
 
   const timelineItems: TimelineItem[] = [
-    { step: 1, title: "Profile Submitted", status: profileStatus, timestamp: profileStatus === "approved" ? "Completed" : undefined },
-    { step: 2, title: "KYC Documents", status: kycStatus, timestamp: kycStatus !== "pending" ? "Submitted" : undefined },
-    { step: 3, title: "Bank Verification", status: bankStatus, timestamp: bankStatus !== "pending" ? "Submitted" : undefined },
+    { step: 1, title: "Profile Submitted", status: profileStatus as VerificationStatus, timestamp: profileStatus === "approved" ? "Completed" : undefined },
+    { step: 2, title: "KYC Documents", status: kycStatus as VerificationStatus, timestamp: kycStatus !== "pending" ? "Submitted" : undefined },
+    { step: 3, title: "Bank Verification", status: bankStatus as VerificationStatus, timestamp: bankStatus !== "pending" ? "Submitted" : undefined },
   ];
 
   return (
@@ -187,19 +187,19 @@ const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
             <StatusCard
               title="Profile Status"
               icon={User}
-              status={profileStatus}
+              status={profileStatus as VerificationStatus}
               details="Personal information verified"
             />
             <StatusCard
               title="KYC Status"
               icon={FileText}
-              status={kycStatus}
+              status={kycStatus as VerificationStatus}
               details="Identity documents verified"
             />
             <StatusCard
               title="Bank Status"
               icon={Building2}
-              status={bankStatus}
+              status={bankStatus as VerificationStatus}
               details="Bank account verified"
             />
           </div>

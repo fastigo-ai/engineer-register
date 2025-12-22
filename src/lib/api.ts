@@ -23,21 +23,28 @@ export interface TokenResponse {
 
 export interface ProfilePayload {
   full_name: string;
-  mobile: string;
+  dob: string;
+  gender: string;
+  contact_number: string;
   email: string;
-  address: string;
-  city: string;
-  state: string;
-  pin_code: string;
-  skills: string[];
-  dob?: string;
+  skill_category: string;
+  specializations: string[];
+  preferred_city: string;
+  current_location: string;
+  willing_to_relocate: boolean;
+}
+
+export interface BankDetailsPayload {
+  bank_name: string;
+  account_number: string;
+  ifsc_code: string;
 }
 
 export interface StatusResponse {
-  profile_status: "pending" | "completed";
-  kyc_status: "pending" | "approved" | "rejected";
-  bank_status: "pending" | "approved" | "rejected";
-  overall_status: "verified" | "rejected" | "pending_review";
+  profile_status: string;
+  kyc_status: string;
+  bank_status: string;
+  overall_status: string;
 }
 
 // ==================== Auth API ====================
@@ -85,25 +92,13 @@ export const authApi = {
 // ==================== Engineer API ====================
 export const engineerApi = {
   async saveProfile(data: ProfilePayload): Promise<{ message: string }> {
-    const payload = {
-      full_name: data.full_name,
-      mobile: data.mobile || "",
-      email: data.email || "",
-      address: data.address,
-      city: data.city,
-      state: data.state || "",
-      pin_code: data.pin_code,
-      skills: data.skills,
-      ...(data.dob && { dob: data.dob }),
-    };
-
     const response = await fetch(`${API_BASE_URL}/engineer/profile`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {

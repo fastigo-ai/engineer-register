@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { User, Phone, Mail, MapPin, Wrench } from "lucide-react";
+import { User, Phone, Mail, MapPin, Wrench, Calendar, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import ProgressIndicator from "./ProgressIndicator";
 import { engineerApi } from "@/lib/api";
@@ -15,7 +14,7 @@ const steps = [
   { id: 4, title: "Status" },
 ];
 
-const skillOptions = [
+const skillCategories = [
   "Plumbing",
   "Electrical",
   "HVAC",
@@ -28,15 +27,19 @@ const skillOptions = [
   "Flooring",
 ];
 
+const genderOptions = ["Male", "Female", "Other"];
+
 interface ProfileData {
   fullName: string;
-  mobile: string;
+  dob: string;
+  gender: string;
+  contactNumber: string;
   email: string;
-  address: string;
-  city: string;
-  state: string;
-  pinCode: string;
-  skills: string[];
+  skillCategory: string;
+  specializations: string[];
+  preferredCity: string;
+  currentLocation: string;
+  willingToRelocate: boolean;
 }
 
 interface ProfileScreenProps {
@@ -48,26 +51,28 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
     fullName: "",
-    mobile: initialData.mobile,
+    dob: "",
+    gender: "",
+    contactNumber: initialData.mobile,
     email: initialData.email,
-    address: "",
-    city: "",
-    state: "",
-    pinCode: "",
-    skills: [],
+    skillCategory: "",
+    specializations: [],
+    preferredCity: "",
+    currentLocation: "",
+    willingToRelocate: false,
   });
 
-  const toggleSkill = (skill: string) => {
+  const toggleSpecialization = (spec: string) => {
     setFormData((prev) => ({
       ...prev,
-      skills: prev.skills.includes(skill)
-        ? prev.skills.filter((s) => s !== skill)
-        : [...prev.skills, skill],
+      specializations: prev.specializations.includes(spec)
+        ? prev.specializations.filter((s) => s !== spec)
+        : [...prev.specializations, spec],
     }));
   };
 
   const handleSubmit = async () => {
-    if (!formData.fullName || !formData.address || !formData.city || !formData.pinCode) {
+    if (!formData.fullName || !formData.dob || !formData.gender || !formData.contactNumber || !formData.email) {
       toast({
         title: "Incomplete Form",
         description: "Please fill in all required fields",
@@ -75,10 +80,10 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
       });
       return;
     }
-    if (formData.skills.length === 0) {
+    if (!formData.skillCategory) {
       toast({
-        title: "Select Skills",
-        description: "Please select at least one skill",
+        title: "Select Skill Category",
+        description: "Please select a skill category",
         variant: "destructive",
       });
       return;
@@ -88,13 +93,15 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
     try {
       await engineerApi.saveProfile({
         full_name: formData.fullName,
-        mobile: formData.mobile,
+        dob: formData.dob,
+        gender: formData.gender,
+        contact_number: formData.contactNumber,
         email: formData.email,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        pin_code: formData.pinCode,
-        skills: formData.skills,
+        skill_category: formData.skillCategory,
+        specializations: formData.specializations,
+        preferred_city: formData.preferredCity,
+        current_location: formData.currentLocation,
+        willing_to_relocate: formData.willingToRelocate,
       });
       toast({
         title: "Profile Saved",
@@ -144,24 +151,58 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            {/* Mobile & Email Row */}
+            {/* DOB & Gender Row */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="mobile">Mobile Number</Label>
+                <Label htmlFor="dob">Date of Birth *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="dob"
+                    type="date"
+                    value={formData.dob}
+                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    className="input-field pl-11"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Gender *</Label>
+                <div className="flex gap-2">
+                  {genderOptions.map((gender) => (
+                    <button
+                      key={gender}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, gender })}
+                      className={`chip flex-1 ${
+                        formData.gender === gender ? "chip-selected" : "chip-default"
+                      }`}
+                    >
+                      {gender}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Contact & Email Row */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contactNumber">Contact Number *</Label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="mobile"
-                    value={formData.mobile}
+                    id="contactNumber"
+                    value={formData.contactNumber}
                     readOnly={!!initialData.mobile}
-                    placeholder="Enter mobile number"
-                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                    placeholder="Enter contact number"
+                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
                     className={`input-field pl-11 ${initialData.mobile ? "bg-muted/50" : ""}`}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Email Address *</Label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -177,75 +218,99 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            {/* Address */}
-            <div className="space-y-2">
-              <Label htmlFor="address">Address *</Label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
-                <Textarea
-                  id="address"
-                  placeholder="Enter your complete address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="pl-11 min-h-[80px] resize-none border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            {/* City, State, PIN Row */}
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  placeholder="City"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  placeholder="State"
-                  value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pinCode">PIN Code *</Label>
-                <Input
-                  id="pinCode"
-                  placeholder="PIN Code"
-                  value={formData.pinCode}
-                  onChange={(e) => setFormData({ ...formData, pinCode: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-            </div>
-
-            {/* Skills */}
+            {/* Skill Category */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-muted-foreground" />
-                Skills / Expertise *
+                Skill Category *
               </Label>
               <div className="flex flex-wrap gap-2">
-                {skillOptions.map((skill) => (
+                {skillCategories.map((skill) => (
                   <button
                     key={skill}
                     type="button"
-                    onClick={() => toggleSkill(skill)}
+                    onClick={() => setFormData({ ...formData, skillCategory: skill })}
                     className={`chip ${
-                      formData.skills.includes(skill) ? "chip-selected" : "chip-default"
+                      formData.skillCategory === skill ? "chip-selected" : "chip-default"
                     }`}
                   >
                     {skill}
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Specializations */}
+            {formData.skillCategory && (
+              <div className="space-y-3 animate-fade-in">
+                <Label>Specializations (Optional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {["Residential", "Commercial", "Industrial", "Emergency Services", "Maintenance"].map((spec) => (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => toggleSpecialization(spec)}
+                      className={`chip ${
+                        formData.specializations.includes(spec) ? "chip-selected" : "chip-default"
+                      }`}
+                    >
+                      {spec}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Location Fields */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentLocation">Current Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="currentLocation"
+                    placeholder="Enter current city"
+                    value={formData.currentLocation}
+                    onChange={(e) => setFormData({ ...formData, currentLocation: e.target.value })}
+                    className="input-field pl-11"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="preferredCity">Preferred City</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="preferredCity"
+                    placeholder="Enter preferred city"
+                    value={formData.preferredCity}
+                    onChange={(e) => setFormData({ ...formData, preferredCity: e.target.value })}
+                    className="input-field pl-11"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Willing to Relocate */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, willingToRelocate: !formData.willingToRelocate })}
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  formData.willingToRelocate
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-border"
+                }`}
+              >
+                {formData.willingToRelocate && (
+                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <Label className="cursor-pointer" onClick={() => setFormData({ ...formData, willingToRelocate: !formData.willingToRelocate })}>
+                Willing to relocate
+              </Label>
             </div>
 
             <Button 
