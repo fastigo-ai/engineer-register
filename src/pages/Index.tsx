@@ -5,9 +5,9 @@ import ProfileScreen from "@/components/onboarding/ProfileScreen";
 import KYCScreen from "@/components/onboarding/KYCScreen";
 import BankScreen from "@/components/onboarding/BankScreen";
 import StatusScreen from "@/components/onboarding/StatusScreen";
-import { authApi } from "@/lib/api";
+import { authApi, engineerApi } from "@/lib/api";
 
-type OnboardingStep = "auth" | "profile" | "kyc" | "bank" | "status";
+type OnboardingStep = "auth" | "profile" | "kyc" | "bank" | "status" | "loading";
 
 interface AuthData {
   mobile: string;
@@ -23,7 +23,7 @@ interface VerificationStatuses {
 }
 
 const Index = () => {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>("auth");
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>("loading");
   const [authData, setAuthData] = useState<AuthData>({ mobile: "", email: "" });
   const [verificationStatuses, setVerificationStatuses] = useState<VerificationStatuses>({
     profile: "pending",
@@ -31,11 +31,35 @@ const Index = () => {
     bank: "pending",
   });
 
-  // Check for existing auth on mount
+  // Check for existing auth and status on mount
   useEffect(() => {
-    if (authApi.isAuthenticated()) {
-      setCurrentStep("profile");
-    }
+    const checkUserStatus = async () => {
+      if (!authApi.isAuthenticated()) {
+        setCurrentStep("auth");
+        return;
+      }
+
+      try {
+        const status = await engineerApi.getStatus();
+        
+        // Determine which step to show based on status
+        if (status.profile_status === "pending") {
+          setCurrentStep("profile");
+        } else if (status.kyc_status === "pending") {
+          setCurrentStep("kyc");
+        } else if (status.bank_status === "pending") {
+          setCurrentStep("bank");
+        } else {
+          // All steps completed, show status page
+          setCurrentStep("status");
+        }
+      } catch (error) {
+        // If status fetch fails (e.g., new user), start from profile
+        setCurrentStep("profile");
+      }
+    };
+
+    checkUserStatus();
   }, []);
 
   const handleSignOut = () => {
@@ -76,6 +100,12 @@ const Index = () => {
       <AppHeader isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
 
       <main>
+        {currentStep === "loading" && (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        )}
+
         {currentStep === "auth" && (
           <AuthScreen onAuthenticated={handleAuthComplete} />
         )}
