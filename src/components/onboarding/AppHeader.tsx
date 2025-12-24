@@ -1,6 +1,7 @@
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import Logo from "@/assests/door2fy icon.jpg"
 
 interface AppHeaderProps {
   isAuthenticated?: boolean;
@@ -16,19 +17,23 @@ const AppHeader = ({
   return (
     <header className="sticky top-0 z-50 w-full bg-card/95 backdrop-blur-md border-b border-border/50">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+        
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-glow">
-            <span className="text-primary-foreground font-bold text-lg">D</span>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+          <div className="w-12 h-12 rounded-xl  flex items-center justify-center shadow-glow overflow-hidden">
+            <img
+              src={Logo}
+              alt="Door2fy Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
-          <span className="text-xl font-bold text-foreground">
-            Door2fy
-          </span>
+          
         </div>
 
         {/* Right Side */}
         {isAuthenticated && (
           <div className="flex items-center gap-3">
+            
             {/* USER ICON */}
             <Button
               variant="ghost"

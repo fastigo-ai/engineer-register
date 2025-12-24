@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import StatusScreen from "./components/onboarding/StatusScreen";
-
+import Main from "./components/main";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -16,7 +16,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Main />} />
+          <Route path="/register" element={<Index />} />
           <Route
           path="/status"
           element={<StatusScreen />}

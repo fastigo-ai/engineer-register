@@ -3,9 +3,14 @@ import { Shield, Smartphone, Mail, ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
 import { authApi } from "@/lib/api";
+import Logo from "@/assests/door2fy icon.jpg"
 
 interface AuthScreenProps {
   onAuthenticated: (data: { mobile: string; email: string }) => void;
@@ -44,7 +49,8 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send OTP",
+        description:
+          error instanceof Error ? error.message : "Failed to send OTP",
         variant: "destructive",
       });
     } finally {
@@ -77,7 +83,8 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "OTP verification failed",
+        description:
+          error instanceof Error ? error.message : "OTP verification failed",
         variant: "destructive",
       });
     } finally {
@@ -91,9 +98,14 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
         <div className="glass-card rounded-2xl p-8">
           {/* Logo & Title */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-              <Shield className="w-8 h-8 text-primary" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4">
+              <img
+                src={Logo}
+                alt="Door2fy Logo"
+                className="w-16 h-16 object-contain"
+              />
             </div>
+
             <h1 className="text-2xl font-bold text-foreground">
               {authMode === "signin" ? "Welcome Back" : "Create Account"}
             </h1>
@@ -173,7 +185,9 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-success/10 mb-4">
                   <Lock className="w-6 h-6 text-success" />
                 </div>
-                <h2 className="text-lg font-semibold">Enter Verification Code</h2>
+                <h2 className="text-lg font-semibold">
+                  Enter Verification Code
+                </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   We sent a 6-digit code to {inputValue}
                 </p>
