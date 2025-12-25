@@ -35,6 +35,12 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
     try {
       const mode = isEmail ? "email" : "mobile";
       const response = await authApi.register(mode, inputValue);
+      console.log("Register response:", response);
+      
+      if (!response.identifier) {
+        throw new Error("No identifier received from server");
+      }
+      
       setIdentifier(response.identifier);
       setShowOtp(true);
       toast({
@@ -64,6 +70,7 @@ const AuthScreen = ({ onAuthenticated }: AuthScreenProps) => {
 
     setIsLoading(true);
     try {
+      console.log("Verifying OTP with identifier:", identifier, "otp:", otp);
       const response = await authApi.verifyOtp(identifier, otp);
       authApi.setToken(response.access_token);
       toast({

@@ -68,11 +68,15 @@ export const authApi = {
     return response.json();
   },
 
-  async verifyOtp(sessionId: string, otp: string): Promise<TokenResponse> {
+  async verifyOtp(identifier: string, otp: string): Promise<TokenResponse> {
+    if (!identifier) {
+      throw new Error("Identifier is required for OTP verification");
+    }
+    
     const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, otp }),
+      body: JSON.stringify({ identifier, otp }),
     });
 
     if (!response.ok) {
