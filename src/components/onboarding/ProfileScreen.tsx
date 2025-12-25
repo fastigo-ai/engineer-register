@@ -14,17 +14,32 @@ const steps = [
   { id: 4, title: "Status" },
 ];
 
-const skillCategories = [
-  "Plumbing",
-  "Electrical",
-  "HVAC",
-  "Carpentry",
-  "Painting",
-  "Appliance Repair",
-  "Masonry",
-  "Welding",
-  "Roofing",
-  "Flooring",
+const skillCategories = {
+  "💻 Desktop & Laptop": [
+    "Laptop & Desktop Troubleshooting (Hardware + Software)",
+    "Windows / macOS Installation & Configuration",
+    "Software Installation, Errors & Performance Fix",
+    "Virus, Malware & Security Cleanup",
+    "Data Backup, Recovery & OS Optimization",
+  ],
+  "🌐 Networking & IT Infrastructure": [
+    "LAN / WAN / Wi-Fi Setup & Troubleshooting",
+    "Router, Switch & Firewall (Basic–Intermediate)",
+    "IP Configuration, DNS, DHCP Understanding",
+    "Printer, Scanner & Peripheral Setup",
+  ],
+  "☁️ Cloud & Remote Support": [
+    "Remote Support Tools (AnyDesk, TeamViewer, RDP)",
+    "Basic Cloud Knowledge (AWS / Azure fundamentals)",
+    "Email Setup (Google Workspace, Outlook, IMAP/POP)",
+    "Backup & Cloud Storage Support",
+  ],
+};
+
+const specializations = [
+  "Laptop Support",
+  "Desktop Support",
+  "Macbook Support",
 ];
 
 const genderOptions = ["Male", "Female", "Other"];
@@ -35,7 +50,7 @@ interface ProfileData {
   gender: string;
   contactNumber: string;
   email: string;
-  skillCategory: string;
+  skillCategories: string[];
   specializations: string[];
   preferredCity: string;
   currentLocation: string;
@@ -55,12 +70,21 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
     gender: "",
     contactNumber: initialData.mobile,
     email: initialData.email,
-    skillCategory: "",
+    skillCategories: [],
     specializations: [],
     preferredCity: "",
     currentLocation: "",
     willingToRelocate: false,
   });
+
+  const toggleSkillCategory = (skill: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      skillCategories: prev.skillCategories.includes(skill)
+        ? prev.skillCategories.filter((s) => s !== skill)
+        : [...prev.skillCategories, skill],
+    }));
+  };
 
   const toggleSpecialization = (spec: string) => {
     setFormData((prev) => ({
@@ -80,10 +104,10 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
       });
       return;
     }
-    if (!formData.skillCategory) {
+    if (formData.skillCategories.length === 0) {
       toast({
         title: "Select Skill Category",
-        description: "Please select a skill category",
+        description: "Please select at least one skill category",
         variant: "destructive",
       });
       return;
@@ -97,7 +121,7 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
         gender: formData.gender,
         contact_number: formData.contactNumber,
         email: formData.email,
-        skill_category: formData.skillCategory,
+        skill_categories: formData.skillCategories,
         specializations: formData.specializations,
         preferred_city: formData.preferredCity,
         current_location: formData.currentLocation,
@@ -218,48 +242,51 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            {/* Skill Category */}
-            <div className="space-y-3">
+            {/* Skill Category - Multiple Selection */}
+            <div className="space-y-4">
               <Label className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-muted-foreground" />
-                Skill Category *
+                Skill Category * (Select multiple)
               </Label>
+              {Object.entries(skillCategories).map(([category, skills]) => (
+                <div key={category} className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">{category}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <button
+                        key={skill}
+                        type="button"
+                        onClick={() => toggleSkillCategory(skill)}
+                        className={`chip ${
+                          formData.skillCategories.includes(skill) ? "chip-selected" : "chip-default"
+                        }`}
+                      >
+                        {skill}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Specializations */}
+            <div className="space-y-3">
+              <Label>Specializations (Optional)</Label>
               <div className="flex flex-wrap gap-2">
-                {skillCategories.map((skill) => (
+                {specializations.map((spec) => (
                   <button
-                    key={skill}
+                    key={spec}
                     type="button"
-                    onClick={() => setFormData({ ...formData, skillCategory: skill })}
+                    onClick={() => toggleSpecialization(spec)}
                     className={`chip ${
-                      formData.skillCategory === skill ? "chip-selected" : "chip-default"
+                      formData.specializations.includes(spec) ? "chip-selected" : "chip-default"
                     }`}
                   >
-                    {skill}
+                    {spec}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Specializations */}
-            {formData.skillCategory && (
-              <div className="space-y-3 animate-fade-in">
-                <Label>Specializations (Optional)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {["Residential", "Commercial", "Industrial", "Emergency Services", "Maintenance"].map((spec) => (
-                    <button
-                      key={spec}
-                      type="button"
-                      onClick={() => toggleSpecialization(spec)}
-                      className={`chip ${
-                        formData.specializations.includes(spec) ? "chip-selected" : "chip-default"
-                      }`}
-                    >
-                      {spec}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Location Fields */}
             <div className="grid md:grid-cols-2 gap-4">
