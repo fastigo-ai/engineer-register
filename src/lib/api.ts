@@ -12,7 +12,7 @@ const getAuthHeaders = () => ({
 
 // ==================== Types ====================
 export interface RegisterResponse {
-  session_id: string;
+  identifier: string;
   is_new_user: boolean;
   message: string;
 }
