@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { User, Phone, Mail, MapPin, Wrench, Calendar, Users } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, Phone, Mail, MapPin, Wrench, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,12 +37,7 @@ const skillCategories = {
   ],
 };
 
-const specializations = [
-  "Laptop Support",
-  "Desktop Support",
-  "Macbook Support",
-];
-
+const specializations = ["Laptop Support", "Desktop Support", "Macbook Support"];
 const genderOptions = ["Male", "Female", "Other"];
 
 interface ProfileData {
@@ -50,43 +46,109 @@ interface ProfileData {
   gender: string;
   contactNumber: string;
   email: string;
-  skillCategory: string[];
+  skillCategories: string[];
   specializations: string[];
   preferredCity: string;
   currentLocation: string;
+  pincode: string;
   willingToRelocate: boolean;
 }
 
 interface ProfileScreenProps {
-  initialData: { mobile: string; email: string };
+  initialData: {
+    mobile: string;
+    email: string;
+    profile?: {
+      name?: string;
+      dob?: string;
+      gender?: string;
+      skills?: string[];
+      specializations?: string[];
+      preferred_city?: string;
+      current_location?: string;
+      pincode?: string;
+      isAvailable?: boolean;
+      is_hold?: boolean;
+      kyc_status?: string;
+      bank_status?: string;
+    };
+  };
   onComplete: (data: ProfileData) => void;
 }
 
 const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
+  const navigate = useNavigate();
+  const [hold, sethold] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState<ProfileData>({
-    fullName: "",
-    dob: "",
-    gender: "",
-    contactNumber: initialData.mobile,
-    email: initialData.email,
-    skillCategory: [],
-    specializations: [],
-    preferredCity: "",
-    currentLocation: "",
-    willingToRelocate: false,
+    fullName: initialData.profile?.name || "",
+    dob: initialData.profile?.dob || "",
+    gender: initialData.profile?.gender || "",
+    contactNumber: initialData.mobile || "",
+    email: initialData.email || "",
+    skillCategories: initialData.profile?.skills || [],
+    specializations: initialData.profile?.specializations || [],
+    preferredCity: initialData.profile?.preferred_city || "",
+    currentLocation: initialData.profile?.current_location || "",
+    pincode: initialData.profile?.pincode || "",
+    willingToRelocate: initialData.profile?.isAvailable || false,
   });
 
- const toggleSkillCategory = (skill: string) => {
+  const isOnHold = initialData.profile?.is_hold ?? false;
+
+  // Redirect if profile is on hold
+useEffect(() => {
+  if (isOnHold) {
+    const handleOnHold = async () => {
+      toast({
+        title: "Profile on Hold",
+        description:
+          "Your profile is on hold by admin. Redirecting to the next step.",
+        variant: "destructive",
+      });
+
+      try {
+        // Fetch the latest profile status from API
+        const status = await engineerApi.getStatus();
+
+       
+
+        let nextStepUrl = "/partner-register"; // default
+        if (status?.kyc_status === "approved" && status?.bank_status === "approved") {
+          nextStepUrl = "/status";
+        } else if (status?.kyc_status === "approved") {
+          nextStepUrl = "/partner-register";
+        }
+
+        navigate(nextStepUrl);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error ? error.message : "Failed to fetch profile status",
+          variant: "destructive",
+        });
+      }
+    };
+
+    handleOnHold();
+  }
+}, [isOnHold, navigate]);
+
+
+  const toggleSkillCategory = (skill: string) => {
+    if (isOnHold) return;
     setFormData((prev) => ({
       ...prev,
-      skillCategory: prev.skillCategory.includes(skill)
-        ? prev.skillCategory.filter((s) => s !== skill)
-        : [...prev.skillCategory, skill],
+      skillCategories: prev.skillCategories.includes(skill)
+        ? prev.skillCategories.filter((s) => s !== skill)
+        : [...prev.skillCategories, skill],
     }));
   };
 
   const toggleSpecialization = (spec: string) => {
+    if (isOnHold) return;
     setFormData((prev) => ({
       ...prev,
       specializations: prev.specializations.includes(spec)
@@ -96,7 +158,22 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.fullName || !formData.dob || !formData.gender || !formData.contactNumber || !formData.email) {
+    if (isOnHold) {
+      toast({
+        title: "Profile on Hold",
+        description: "Your profile is on hold. You cannot save or continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      !formData.fullName ||
+      !formData.dob ||
+      !formData.gender ||
+      !formData.contactNumber ||
+      !formData.email
+    ) {
       toast({
         title: "Incomplete Form",
         description: "Please fill in all required fields",
@@ -104,7 +181,8 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
       });
       return;
     }
-    if (formData.skillCategory.length === 0) {
+
+    if (formData.skillCategories.length === 0) {
       toast({
         title: "Select Skill Category",
         description: "Please select at least one skill category",
@@ -115,18 +193,25 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
 
     setIsLoading(true);
     try {
-      await engineerApi.saveProfile({
+      const payload = {
         full_name: formData.fullName,
         dob: formData.dob,
-        gender: formData.gender,
+        gender: formData.gender.toLowerCase(),
         contact_number: formData.contactNumber,
         email: formData.email,
-        skill_category: formData.skillCategory,
-        specializations: formData.specializations,
+        skill_category: formData.skillCategories,
+        specialization: formData.specializations,
         preferred_city: formData.preferredCity,
         current_location: formData.currentLocation,
+        pincode: formData.pincode,
         willing_to_relocate: formData.willingToRelocate,
-      });
+      };
+
+      const updateProfile = await engineerApi.saveProfile(payload);
+      // Refresh the current page
+      window.location.reload();
+
+      
       toast({
         title: "Profile Saved",
         description: "Your profile details have been saved successfully",
@@ -135,7 +220,8 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save profile",
+        description:
+        error instanceof Error ? error.message : "Failed to save profile",
         variant: "destructive",
       });
     } finally {
@@ -148,13 +234,22 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
       <div className="max-w-2xl mx-auto">
         <ProgressIndicator steps={steps} currentStep={1} />
 
+        {isOnHold && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4 text-center font-medium">
+            Your profile is on hold by admin. You cannot edit or proceed.
+          </div>
+        )}
+
         <div className="glass-card rounded-2xl p-6 md:p-8 animate-fade-up mt-6">
+          {/* Form Header */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <User className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Complete Your Profile</h1>
+              <h1 className="text-xl font-bold text-foreground">
+                Complete Your Profile
+              </h1>
               <p className="text-sm text-muted-foreground">Step 1 of 4</p>
             </div>
           </div>
@@ -169,13 +264,16 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                   id="fullName"
                   placeholder="Enter your full name"
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
                   className="input-field pl-11"
+                  disabled={isOnHold}
                 />
               </div>
             </div>
 
-            {/* DOB & Gender Row */}
+            {/* DOB & Gender */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dob">Date of Birth *</Label>
@@ -185,8 +283,11 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                     id="dob"
                     type="date"
                     value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dob: e.target.value })
+                    }
                     className="input-field pl-11"
+                    disabled={isOnHold}
                   />
                 </div>
               </div>
@@ -199,8 +300,11 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                       type="button"
                       onClick={() => setFormData({ ...formData, gender })}
                       className={`chip flex-1 ${
-                        formData.gender === gender ? "chip-selected" : "chip-default"
+                        formData.gender === gender
+                          ? "chip-selected"
+                          : "chip-default"
                       }`}
+                      disabled={isOnHold}
                     >
                       {gender}
                     </button>
@@ -209,7 +313,7 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            {/* Contact & Email Row */}
+            {/* Contact & Email */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="contactNumber">Contact Number *</Label>
@@ -218,10 +322,17 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                   <Input
                     id="contactNumber"
                     value={formData.contactNumber}
-                    readOnly={!!initialData.mobile}
+                    readOnly={!!initialData.mobile || isOnHold}
                     placeholder="Enter contact number"
-                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-                    className={`input-field pl-11 ${initialData.mobile ? "bg-muted/50" : ""}`}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contactNumber: e.target.value,
+                      })
+                    }
+                    className={`input-field pl-11 ${
+                      initialData.mobile ? "bg-muted/50" : ""
+                    }`}
                   />
                 </div>
               </div>
@@ -233,16 +344,20 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                     id="email"
                     type="email"
                     value={formData.email}
-                    readOnly={!!initialData.email}
+                    readOnly={!!initialData.email || isOnHold}
                     placeholder="Enter email address"
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`input-field pl-11 ${initialData.email ? "bg-muted/50" : ""}`}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className={`input-field pl-11 ${
+                      initialData.email ? "bg-muted/50" : ""
+                    }`}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Skill Category - Multiple Selection */}
+            {/* Skill Categories */}
             <div className="space-y-4">
               <Label className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-muted-foreground" />
@@ -250,7 +365,9 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </Label>
               {Object.entries(skillCategories).map(([category, skills]) => (
                 <div key={category} className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">{category}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {category}
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {skills.map((skill) => (
                       <button
@@ -258,8 +375,11 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                         type="button"
                         onClick={() => toggleSkillCategory(skill)}
                         className={`chip ${
-                          formData.skillCategory.includes(skill) ? "chip-selected" : "chip-default"
+                          formData.skillCategories.includes(skill)
+                            ? "chip-selected"
+                            : "chip-default"
                         }`}
+                        disabled={isOnHold}
                       >
                         {skill}
                       </button>
@@ -279,8 +399,11 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                     type="button"
                     onClick={() => toggleSpecialization(spec)}
                     className={`chip ${
-                      formData.specializations.includes(spec) ? "chip-selected" : "chip-default"
+                      formData.specializations.includes(spec)
+                        ? "chip-selected"
+                        : "chip-default"
                     }`}
+                    disabled={isOnHold}
                   >
                     {spec}
                   </button>
@@ -288,8 +411,8 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
               </div>
             </div>
 
-            {/* Location Fields */}
-            <div className="grid md:grid-cols-2 gap-4">
+            {/* Location & Pincode */}
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="currentLocation">Current Location</Label>
                 <div className="relative">
@@ -298,8 +421,14 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                     id="currentLocation"
                     placeholder="Enter current city"
                     value={formData.currentLocation}
-                    onChange={(e) => setFormData({ ...formData, currentLocation: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        currentLocation: e.target.value,
+                      })
+                    }
                     className="input-field pl-11"
+                    disabled={isOnHold}
                   />
                 </div>
               </div>
@@ -311,8 +440,31 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
                     id="preferredCity"
                     placeholder="Enter preferred city"
                     value={formData.preferredCity}
-                    onChange={(e) => setFormData({ ...formData, preferredCity: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        preferredCity: e.target.value,
+                      })
+                    }
                     className="input-field pl-11"
+                    disabled={isOnHold}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pincode">PIN Code</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="pincode"
+                    placeholder="Enter PIN code"
+                    value={formData.pincode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pincode: e.target.value })
+                    }
+                    className="input-field pl-11"
+                    maxLength={6}
+                    disabled={isOnHold}
                   />
                 </div>
               </div>
@@ -322,37 +474,51 @@ const ProfileScreen = ({ initialData, onComplete }: ProfileScreenProps) => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, willingToRelocate: !formData.willingToRelocate })}
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    willingToRelocate: !formData.willingToRelocate,
+                  })
+                }
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                   formData.willingToRelocate
                     ? "bg-primary border-primary text-primary-foreground"
                     : "border-border"
                 }`}
+                disabled={isOnHold}
               >
                 {formData.willingToRelocate && (
                   <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M2 6L5 9L10 3"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 )}
               </button>
-              <Label className="cursor-pointer" onClick={() => setFormData({ ...formData, willingToRelocate: !formData.willingToRelocate })}>
+              <Label
+                className="cursor-pointer"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    willingToRelocate: !formData.willingToRelocate,
+                  })
+                }
+              >
                 Willing to relocate
               </Label>
             </div>
 
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isLoading}
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={isLoading || isOnHold}
               className="w-full h-12 text-base font-medium mt-6"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Saving...
-                </span>
-              ) : (
-                "Save & Continue"
-              )}
+              {isOnHold ? "Profile on Hold" : isLoading ? "Saving..." : "Save & Continue"}
             </Button>
           </div>
         </div>

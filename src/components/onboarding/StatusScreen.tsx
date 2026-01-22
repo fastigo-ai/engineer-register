@@ -3,7 +3,7 @@ import { User, FileText, Building2, CheckCircle, Clock, XCircle, Shield } from "
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "./ProgressIndicator";
 import { engineerApi, StatusResponse } from "@/lib/api";
-
+import UnderReviewScreen from "./UnderReviewScreen";
 const steps = [
   { id: 1, title: "Profile" },
   { id: 2, title: "KYC" },
@@ -120,9 +120,10 @@ const Timeline = ({ items }: { items: TimelineItem[] }) => {
 
 interface StatusScreenProps {
   rejectionReason?: string;
+  onStatusChange?: (nextStep: "kyc" | "bank" | "status") => void;
 }
 
-const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
+const StatusScreen = ({ rejectionReason, onStatusChange }: StatusScreenProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [statusData, setStatusData] = useState<StatusResponse | null>(null);
 
@@ -131,6 +132,17 @@ const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
       try {
         const data = await engineerApi.getStatus();
         setStatusData(data);
+        
+        // Auto-redirect if not on hold
+        if (data && onStatusChange && !data.is_hold) {
+          if (data.kyc_status === "pending") {
+            onStatusChange("kyc");
+            return;
+          } else if (data.bank_status === "pending") {
+            onStatusChange("bank");
+            return;
+          }
+        }
       } catch (error) {
         console.error("Failed to fetch status:", error);
       } finally {
@@ -139,7 +151,7 @@ const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
     };
 
     fetchStatus();
-  }, []);
+  }, [onStatusChange]);
 
   if (isLoading) {
     return (
@@ -152,10 +164,16 @@ const StatusScreen = ({ rejectionReason }: StatusScreenProps) => {
     );
   }
 
-  const profileStatus = statusData?.profile_status === "completed" ? "approved" : "pending";
+  const profileStatus = statusData?.profile_status === "active" ? "approved" : "pending";
   const kycStatus = statusData?.kyc_status || "pending";
   const bankStatus = statusData?.bank_status || "pending";
   const overallStatus = statusData?.overall_status || "pending_review";
+  const isOnHold = statusData?.is_hold ?? true;
+
+  // If profile is on hold and pending, show UnderReviewScreen
+  if (isOnHold && profileStatus === "pending") {
+    return <UnderReviewScreen />;
+  }
 
   const allApproved = overallStatus === "verified";
   const anyRejected = overallStatus === "rejected";

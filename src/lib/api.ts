@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "https://engineer-xkt8.onrender.com";
+// const API_BASE_URL =  "http://localhost:8000";
 
 // ==================== Token Management ====================
 const getToken = (): string | null => localStorage.getItem("access_token");
@@ -28,9 +29,10 @@ export interface ProfilePayload {
   contact_number: string;
   email: string;
   skill_category: string;
-  specializations: string[];
+  specialization: string;
   preferred_city: string;
   current_location: string;
+  pincode: string;
   willing_to_relocate: boolean;
 }
 
@@ -45,6 +47,7 @@ export interface StatusResponse {
   kyc_status: string;
   bank_status: string;
   overall_status: string;
+  is_hold: boolean;
 }
 
 // ==================== Auth API ====================
@@ -95,7 +98,7 @@ export const authApi = {
 
 // ==================== Engineer API ====================
 export const engineerApi = {
-  async saveProfile(data: ProfilePayload): Promise<{ message: string }> {
+  async saveProfile(data: ProfilePayload): Promise<{ message: string; is_hold: boolean; status: string }> {
     const response = await fetch(`${API_BASE_URL}/engineer/profile`, {
       method: "POST",
       headers: {

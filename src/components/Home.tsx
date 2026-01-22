@@ -36,7 +36,7 @@ const Home = () => {
 
         <div className="flex flex-row w-full md:w-auto items-center rounded-md overflow-hidden shadow-sm">
           {/* Join Button */}
-          <Link to="/register" className="w-full ">
+          <Link to="/partner-register" className="w-full ">
             <button className="bg-gray-200 text-black hover:bg-cyan-500 hover:text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-base sm:text-lg rounded-md w-full">
               Join US
             </button>
