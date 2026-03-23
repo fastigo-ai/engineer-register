@@ -32,19 +32,34 @@ interface BankData {
 }
 
 interface BankScreenProps {
+  initialData?: {
+    bank?: {
+      bank_name?: string;
+      account_number?: string;
+      ifsc_code?: string;
+      account_holder_name?: string;
+      proof_file?: string;
+      status?: string;
+    }
+  };
   onComplete: () => void;
   onBack: () => void;
 }
 
-const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
+const BankScreen = ({ initialData, onComplete, onBack }: BankScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<BankData>({
-    accountHolderName: "",
-    accountNumber: "",
-    confirmAccountNumber: "",
-    ifscCode: "",
-    bankName: "",
-    chequeImage: null,
+    accountHolderName: initialData?.bank?.account_holder_name || "",
+    accountNumber: initialData?.bank?.account_number || "",
+    confirmAccountNumber: initialData?.bank?.account_number || "",
+    ifscCode: initialData?.bank?.ifsc_code || "",
+    bankName: initialData?.bank?.bank_name || "",
+    chequeImage: initialData?.bank?.proof_file ? {
+      name: "Current Proof",
+      preview: initialData.bank.proof_file,
+      file: null as any,
+      status: (initialData.bank.status as any) || "pending"
+    } : null,
   });
 
   const chequeRef = useRef<HTMLInputElement>(null);
@@ -98,7 +113,8 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
       });
       return;
     }
-    if (!formData.chequeImage) {
+    // Files are now optional if they already exist
+    if (!formData.chequeImage && !initialData?.bank?.proof_file) {
       toast({
         title: "Document Required",
         description: "Please upload cancelled cheque or passbook",
@@ -113,7 +129,8 @@ const BankScreen = ({ onComplete, onBack }: BankScreenProps) => {
         formData.bankName,
         formData.accountNumber,
         formData.ifscCode,
-        formData.chequeImage.file
+        formData.chequeImage?.file,
+        formData.accountHolderName
       );
       toast({
         title: "Bank Details Submitted",

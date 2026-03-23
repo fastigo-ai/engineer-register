@@ -200,17 +200,15 @@ useEffect(() => {
         contact_number: formData.contactNumber,
         email: formData.email,
         skill_category: formData.skillCategories,
-        specialization: formData.specializations,
+        specializations: formData.specializations,
         preferred_city: formData.preferredCity,
         current_location: formData.currentLocation,
         pincode: formData.pincode,
-        willing_to_relocate: formData.willingToRelocate,
+        isAvailable: formData.willingToRelocate,
       };
 
-      const updateProfile = await engineerApi.saveProfile(payload);
-      // Refresh the current page
-      window.location.reload();
 
+      const updateProfile = await engineerApi.saveProfile(payload);
       
       toast({
         title: "Profile Saved",

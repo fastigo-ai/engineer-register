@@ -51,6 +51,7 @@ const Index = () => {
     });
 
   const [isHold, setIsHold] = useState<boolean>(false);
+  const [engineerData, setEngineerData] = useState<any>(null);
 
   // 🔁 Decide next step based on backend status
   const determineNextStep = (status: {
@@ -58,13 +59,28 @@ const Index = () => {
     kyc_status: string;
     bank_status: string;
     is_hold: boolean;
+    overall_status?: string;
   }): OnboardingStep => {
+    // Condition 1: Fully Verified
+    if (status.overall_status === "verified") return "status";
+    
+    // Condition 2: Profile Pending (First login / First step)
+    if (status.profile_status === "pending" && !status.is_hold) return "profile"; // Should haven't happened based on current backend but for safety
     if (status.profile_status === "pending") return "profile";
+
+    // Condition 3: Unheld by Admin (status active) but KYC incomplete
+    if (!status.is_hold && status.kyc_status === "incomplete") return "kyc";
+    
+    // Condition 4: Default hold behavior (after profile/kyc/bank)
     if (status.is_hold) return "status";
-    if (status.kyc_status === "pending") return "kyc";
-    if (status.bank_status === "pending") return "bank";
+
+    // Condition 5: Normal progression
+    if (status.kyc_status === "incomplete") return "kyc";
+    if (status.bank_status === "incomplete") return "bank";
+    
     return "status";
   };
+
 
   // 🔍 On page load
   useEffect(() => {
@@ -75,15 +91,18 @@ const Index = () => {
       }
 
       try {
+        const data = await engineerApi.getEngineerDetails();
+        setEngineerData(data);
+        setAuthData({
+            mobile: data.profile?.phone || "",
+            email: data.profile?.email || data.user.email || ""
+        });
+
         const status = await engineerApi.getStatus();
         setIsHold(status.is_hold);
 
         const nextStep = determineNextStep(status);
         setCurrentStep(nextStep);
-
-        if (nextStep === "status") {
-          navigate("/status");
-        }
       } catch (error) {
         setCurrentStep("profile");
       }
@@ -96,6 +115,7 @@ const Index = () => {
   const handleSignOut = () => {
     authApi.removeToken();
     setAuthData({ mobile: "", email: "" });
+    setEngineerData(null);
     setVerificationStatuses({
       profile: "pending",
       kyc: "pending",
@@ -111,33 +131,37 @@ const Index = () => {
     setCurrentStep("loading");
 
     try {
+      // 🔄 Fetch details first
+      const details = await engineerApi.getEngineerDetails();
+      setEngineerData(details);
+
       const status = await engineerApi.getStatus();
       const nextStep = determineNextStep(status);
       setCurrentStep(nextStep);
-
-      if (nextStep === "status") {
-        navigate("/status");
-      }
     } catch (error) {
       setCurrentStep("profile");
     }
   };
 
   // 👤 Profile complete
-  const handleProfileComplete = (_data: unknown, hold: boolean) => {
+  const handleProfileComplete = (_data: any) => {
     setVerificationStatuses((prev) => ({
       ...prev,
       profile: "pending",
     }));
 
-    setIsHold(hold);
-
-    if (hold) {
-      setCurrentStep("status");
-      navigate("/status");
-    } else {
-      setCurrentStep("kyc");
-    }
+    // Re-fetch details to see if we should go to next/status
+    engineerApi.getStatus().then(status => {
+        setIsHold(status.is_hold);
+        if (status.is_hold) {
+            setCurrentStep("status");
+        } else if (status.kyc_status !== "incomplete") {
+            // Already has KYC (Edit mode), go back to status
+            setCurrentStep("status");
+        } else {
+            setCurrentStep("kyc");
+        }
+    });
   };
 
   // 🪪 KYC complete
@@ -146,19 +170,28 @@ const Index = () => {
       ...prev,
       kyc: "pending",
     }));
-    setCurrentStep("bank");
+
+    // After KYC, if Bank is already done (Edit mode), go to status
+    engineerApi.getStatus().then(status => {
+      if (status.bank_status !== "incomplete") {
+        setCurrentStep("status");
+      } else {
+        setCurrentStep("bank");
+      }
+    });
   };
 
-  // 🏦 Bank complete → REDIRECT TO /status
+  // 🏦 Bank complete
   const handleBankComplete = () => {
     setVerificationStatuses((prev) => ({
       ...prev,
       bank: "pending",
     }));
-
+    // After bank details, always go to status (Dashboard)
     setCurrentStep("status");
-    navigate("/status"); // ✅ MAIN REDIRECT
   };
+
+
 
   const isAuthenticated = currentStep !== "auth";
 
@@ -180,35 +213,39 @@ const Index = () => {
           <AuthScreen onAuthenticated={handleAuthComplete} />
         )}
 
-        {isHold ? (
+        {isHold && currentStep === "status" ? (
           <UnderReviewScreen />
         ) : (
-          currentStep === "profile" && (
-            <ProfileScreen
-              initialData={authData}
-              onComplete={handleProfileComplete}
-            />
-          )
-        )}
+          <>
+            {currentStep === "profile" && (
+              <ProfileScreen
+                initialData={engineerData || { mobile: authData.mobile, email: authData.email }}
+                onComplete={handleProfileComplete}
+              />
+            )}
 
-        {currentStep === "kyc" && (
-          <KYCScreen
-            onComplete={handleKYCComplete}
-            onBack={() => setCurrentStep("profile")}
-          />
-        )}
+            {currentStep === "kyc" && (
+              <KYCScreen
+                initialData={engineerData}
+                onComplete={handleKYCComplete}
+                onBack={() => setCurrentStep("profile")}
+              />
+            )}
 
-        {currentStep === "bank" && (
-          <BankScreen
-            onComplete={handleBankComplete}
-            onBack={() => setCurrentStep("status")}
-          />
-        )}
-
-        {currentStep === "status" && (
-          <StatusScreen
-            onStatusChange={(step) => setCurrentStep(step)}
-          />
+            {currentStep === "bank" && (
+              <BankScreen
+                initialData={engineerData}
+                onComplete={handleBankComplete}
+                onBack={() => setCurrentStep("kyc")}
+              />
+            )}
+            {currentStep === "status" && (
+              <StatusScreen
+                onStatusChange={(step) => setCurrentStep(step as any)}
+                onEdit={() => setCurrentStep("profile")}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

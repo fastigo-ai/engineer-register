@@ -18,9 +18,10 @@ interface StatusCardProps {
   icon: typeof User;
   status: VerificationStatus;
   details?: string;
+  onEdit?: () => void;
 }
 
-const StatusCard = ({ title, icon: Icon, status, details }: StatusCardProps) => {
+const StatusCard = ({ title, icon: Icon, status, details, onEdit }: StatusCardProps) => {
   const normalizedStatus = status === "completed" ? "approved" : status;
   
   const statusConfig = {
@@ -66,16 +67,29 @@ const StatusCard = ({ title, icon: Icon, status, details }: StatusCardProps) => 
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
-          <span className={`text-sm font-medium ${config.iconColor}`}>
-            {config.label}
-          </span>
+        <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1.5">
+                <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
+                <span className={`text-sm font-medium ${config.iconColor}`}>
+                    {config.label}
+                </span>
+            </div>
+            {(onEdit && (status === "rejected" || status === "approved")) && (
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onEdit}
+                    className="h-7 px-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/5"
+                >
+                    Edit
+                </Button>
+            )}
         </div>
       </div>
     </div>
   );
 };
+
 
 interface TimelineItem {
   step: number;
@@ -120,10 +134,11 @@ const Timeline = ({ items }: { items: TimelineItem[] }) => {
 
 interface StatusScreenProps {
   rejectionReason?: string;
-  onStatusChange?: (nextStep: "kyc" | "bank" | "status") => void;
+  onStatusChange?: (nextStep: "kyc" | "bank" | "status" | "profile") => void;
+  onEdit?: () => void;
 }
 
-const StatusScreen = ({ rejectionReason, onStatusChange }: StatusScreenProps) => {
+const StatusScreen = ({ rejectionReason, onStatusChange, onEdit }: StatusScreenProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [statusData, setStatusData] = useState<StatusResponse | null>(null);
 
@@ -133,16 +148,7 @@ const StatusScreen = ({ rejectionReason, onStatusChange }: StatusScreenProps) =>
         const data = await engineerApi.getStatus();
         setStatusData(data);
         
-        // Auto-redirect if not on hold
-        if (data && onStatusChange && !data.is_hold) {
-          if (data.kyc_status === "pending") {
-            onStatusChange("kyc");
-            return;
-          } else if (data.bank_status === "pending") {
-            onStatusChange("bank");
-            return;
-          }
-        }
+        // Removed redundant auto-redirect to avoid loops during editing
       } catch (error) {
         console.error("Failed to fetch status:", error);
       } finally {
@@ -207,20 +213,24 @@ const StatusScreen = ({ rejectionReason, onStatusChange }: StatusScreenProps) =>
               icon={User}
               status={profileStatus as VerificationStatus}
               details="Personal information verified"
+              onEdit={() => onStatusChange?.("profile")}
             />
             <StatusCard
               title="KYC Status"
               icon={FileText}
               status={kycStatus as VerificationStatus}
               details="Identity documents verified"
+              onEdit={() => onStatusChange?.("kyc")}
             />
             <StatusCard
               title="Bank Status"
               icon={Building2}
               status={bankStatus as VerificationStatus}
               details="Bank account verified"
+              onEdit={() => onStatusChange?.("bank")}
             />
           </div>
+
 
           {/* Final Status Banner */}
           <div
@@ -280,14 +290,19 @@ const StatusScreen = ({ rejectionReason, onStatusChange }: StatusScreenProps) =>
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 flex gap-3">
+          <div className="mt-8 flex flex-col gap-3">
             {allApproved ? (
-              <Button className="w-full h-12 text-base font-medium">
-                Go to Dashboard
-              </Button>
+              <>
+                <Button className="w-full h-12 text-base font-medium">
+                  Go to Dashboard
+                </Button>
+                <Button variant="outline" onClick={onEdit} className="w-full h-12 text-base font-medium">
+                  Edit Details
+                </Button>
+              </>
             ) : anyRejected ? (
-              <Button className="w-full h-12 text-base font-medium">
-                Re-submit Documents
+              <Button onClick={() => onStatusChange?.("profile")} className="w-full h-12 text-base font-medium">
+                Re-submit Documents / Edit Profile
               </Button>
             ) : (
               <Button disabled className="w-full h-12 text-base font-medium opacity-50">

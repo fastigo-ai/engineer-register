@@ -1,5 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://engineer-xkt8.onrender.com";
-// const API_BASE_URL =  "http://localhost:8000";
+// const API_BASE_URL = import.meta.env.VITE_API_URL || "https://engineer-xkt8.onrender.com";
+const API_BASE_URL =  "http://localhost:8000";
 
 // ==================== Token Management ====================
 const getToken = (): string | null => localStorage.getItem("access_token");
@@ -28,18 +28,20 @@ export interface ProfilePayload {
   gender: string;
   contact_number: string;
   email: string;
-  skill_category: string;
-  specialization: string;
+  skill_category: string[];
+  specializations: string[];
   preferred_city: string;
   current_location: string;
   pincode: string;
-  willing_to_relocate: boolean;
+  isAvailable: boolean;
 }
+
 
 export interface BankDetailsPayload {
   bank_name: string;
   account_number: string;
   ifsc_code: string;
+  account_holder_name?: string;
 }
 
 export interface StatusResponse {
@@ -120,15 +122,19 @@ export const engineerApi = {
     aadhaarNumber: string,
     panNumber: string,
     addressProofType: string,
-    addressProofFile: File,
-    photoFile: File
+    addressProofFile?: File | null,
+    photoFile?: File | null
   ): Promise<{ message: string }> {
     const formData = new FormData();
     formData.append("aadhaar_number", aadhaarNumber);
     formData.append("pan_number", panNumber);
     formData.append("address_proof_type", addressProofType);
-    formData.append("address_proof_file", addressProofFile);
-    formData.append("photo_file", photoFile);
+    if (addressProofFile) {
+        formData.append("address_proof_file", addressProofFile);
+    }
+    if (photoFile) {
+        formData.append("photo_file", photoFile);
+    }
 
     const response = await fetch(`${API_BASE_URL}/engineer/kyc`, {
       method: "POST",
@@ -148,13 +154,19 @@ export const engineerApi = {
     bankName: string,
     accountNumber: string,
     ifscCode: string,
-    proofFile: File
+    proofFile?: File | null,
+    accountHolderName?: string
   ): Promise<{ message: string }> {
     const formData = new FormData();
     formData.append("bank_name", bankName);
     formData.append("account_number", accountNumber);
     formData.append("ifsc_code", ifscCode);
-    formData.append("proof_file", proofFile);
+    if (proofFile) {
+        formData.append("proof_file", proofFile);
+    }
+    if (accountHolderName) {
+        formData.append("account_holder_name", accountHolderName);
+    }
 
     const response = await fetch(`${API_BASE_URL}/engineer/bank`, {
       method: "POST",
@@ -179,6 +191,20 @@ export const engineerApi = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || "Failed to fetch status");
+    }
+
+    return response.json();
+  },
+
+  async getEngineerDetails(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/engineer/details`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to fetch details");
     }
 
     return response.json();

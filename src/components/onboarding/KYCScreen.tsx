@@ -30,17 +30,36 @@ interface KYCData {
 }
 
 interface KYCScreenProps {
+  initialData?: {
+    kyc?: {
+      aadhaar_number?: string;
+      pan_number?: string;
+      photo_file?: string;
+      address_proof_file?: string;
+      status?: string;
+    }
+  };
   onComplete: () => void;
   onBack: () => void;
 }
 
-const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
+const KYCScreen = ({ initialData, onComplete, onBack }: KYCScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<KYCData>({
-    aadhaarNumber: "",
-    panNumber: "",
-    profilePhoto: null,
-    addressProof: null,
+    aadhaarNumber: initialData?.kyc?.aadhaar_number || "",
+    panNumber: initialData?.kyc?.pan_number || "",
+    profilePhoto: initialData?.kyc?.photo_file ? {
+      name: "Current Photo",
+      preview: initialData.kyc.photo_file,
+      file: null as any,
+      status: (initialData.kyc.status as any) || "pending"
+    } : null,
+    addressProof: initialData?.kyc?.address_proof_file ? {
+      name: "Current Address Proof",
+      preview: initialData.kyc.address_proof_file,
+      file: null as any,
+      status: (initialData.kyc.status as any) || "pending"
+    } : null,
   });
 
   const profilePhotoRef = useRef<HTMLInputElement>(null);
@@ -85,10 +104,20 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
       });
       return;
     }
-    if (!formData.profilePhoto || !formData.addressProof) {
+
+    // Files are now optional if they already exist
+    if (!formData.profilePhoto && !initialData?.kyc?.photo_file) {
       toast({
-        title: "Documents Required",
-        description: "Please upload all required documents",
+        title: "Photo Required",
+        description: "Please upload your profile photo",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.addressProof && !initialData?.kyc?.address_proof_file) {
+      toast({
+        title: "Address Proof Required",
+        description: "Please upload address proof",
         variant: "destructive",
       });
       return;
@@ -100,8 +129,8 @@ const KYCScreen = ({ onComplete, onBack }: KYCScreenProps) => {
         formData.aadhaarNumber,
         formData.panNumber,
         "address_proof",
-        formData.addressProof.file,
-        formData.profilePhoto.file
+        formData.addressProof?.file,
+        formData.profilePhoto?.file
       );
       toast({
         title: "KYC Submitted",
