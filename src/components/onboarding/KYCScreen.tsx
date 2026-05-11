@@ -272,14 +272,14 @@ const KYCScreen = ({ initialData, onComplete, onBack }: KYCScreenProps) => {
             {/* Document Uploads */}
             <div className="grid md:grid-cols-2 gap-6 pt-4">
               <UploadZone
-                label="Profile Photo"
+                label="Aadhar Front"
                 icon={Camera}
                 file={formData.profilePhoto}
                 inputRef={profilePhotoRef}
                 field="profilePhoto"
               />
               <UploadZone
-                label="Address Proof"
+                label="Aadhar Back"
                 icon={Image}
                 file={formData.addressProof}
                 inputRef={addressProofRef}
